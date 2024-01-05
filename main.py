@@ -1,0 +1,44 @@
+import streamlit as st
+from streamlit_chat import message as st_message
+from transformers import BlenderbotTokenizer
+from transformers import BlenderbotForConditionalGeneration
+
+st_message("Hi, This is bagchat, click below for your feedback")
+st.write('<a href="mailto:info@bagtofly.com">Contact us !</a>', unsafe_allow_html=True)
+
+
+@st.cache_resource
+def load_data():
+    # it may be necessary for other frameworks to cache the model
+    # seems pytorch keeps an internal state of the conversation
+    model_name = "facebook/blenderbot-400M-distill"
+    tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
+    model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
+    return tokenizer, model
+
+
+# tokenizer, model = load_data()
+
+if "history" not in st.session_state:
+    st.session_state.history = []
+
+st.title("welcome to bagtofly")
+
+
+def generate_answer():
+    tokenizer, model = load_data()
+    user_message = st.session_state.input_text
+    inputs = tokenizer(st.session_state.input_text, return_tensors="pt")
+    result = model.generate(**inputs)
+    message_bot = tokenizer.decode(
+        result[0], skip_special_tokens=True
+    )  # .replace("<s>", "").replace("</s>", "")
+
+    st.session_state.history.append({"message": user_message, "is_user": True})
+    st.session_state.history.append({"message": message_bot, "is_user": False})
+
+
+st.text_input("Talk to the bot", key="input_text", on_change=generate_answer)
+
+for chat in st.session_state.history:
+    st_message(**chat)  # unpacking
